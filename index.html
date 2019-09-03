@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-  <meta charset="gbk">
+  <meta charset="utf8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>翻译excel-js互转</title>
@@ -87,6 +87,7 @@
       } catch (e) {
         return alert(e)
       }
+      console.log(excelData)
       let needDatas
       if (temp) {
         const tempStr = await reader.readAsText(temp)

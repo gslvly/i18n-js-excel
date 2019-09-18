@@ -22,7 +22,6 @@
     js转换excel,请从开发环境中复制需要翻译的locales数据，并粘贴到下面输入框中，locales格式为：{zh-CN:{title:'xxx'}, en:{title:'xx'},....其他语言}。
     <pre>注：可直接使用 <code>console.log(JSON.stringify(locales))</code> ,在调试框里面复制数据</pre>
     <pre>
-      是否需要key    要：<input type="radio" name="radio" value="1" defaultChecked> 不要：<input type="radio" name="radio" value="0">
       
       <button onclick="toExcel()" >生成excel</button>
     </pre>
@@ -65,9 +64,8 @@
       if (!isObj(locales)) {
         return alert('格式不对')
       }
-      const isNeedKey = +document.querySelector('input[type=radio]:checked').value
 
-      let arr = jsonsToArray(locales, isNeedKey) // locales为{"zh-CN":{xxx}, en:{xxx}...}，参数二： 不使用key。使用key可以查询未翻译的字段
+      let arr = jsonsToArray(locales, true) // locales为{"zh-CN":{xxx}, en:{xxx}...}，参数二： 不使用key。使用key可以查询未翻译的字段
       // arr = noRepeat(arr,'zh-CN') // 参数2：按中文去重,不传为按照所有语言翻译都相等来去重。可不使用。
       downloadExcel(arr)
     }

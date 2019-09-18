@@ -11,7 +11,7 @@ do
   echo 开始删除旧文件...
   ssh root@$ip "cd $dir && rm -rf *"
   echo '远端删除旧文件完成，开始传送文件...'
-  scp  -r ./ root@$ip:$dir
+  scp  -r src/* root@$ip:$dir
   echo '文件传送完成'
   echo 服务器：$ip 代码更新成功
 done

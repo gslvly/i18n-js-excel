@@ -60,7 +60,11 @@
     function toExcel() {
       let locales = document.querySelector('#json').value
       if (!locales) return alert('没有数据')
-      locales = new Function(`return ${locales}`)()
+      try{
+        locales = new Function(`return ${locales}`)()
+      } catch(err) {
+        return alert('格式不对')
+      }
       if (!isObj(locales)) {
         return alert('格式不对')
       }

@@ -1,114 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>翻译excel-js互转</title>
+    <script src="shim.min.js"></script>
+    <script src="xlsx.full.min.js"></script>
+    <script src="md5.js"></script>
+    <script src="index.js"></script>
+  </head>
 
-<head>
-  <meta charset="utf8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>翻译excel-js互转</title>
-  <script src="shim.min.js"></script>
-  <script src="xlsx.full.min.js"></script>
-  <script src="index.js"></script>
-</head>
-
-<body>
-  <style>
-    code {
-      background: #eee;
-    }
-  </style>
-  <div>
-    <h5>js → excel</h5>
-    js转换excel,请从开发环境中复制需要翻译的locales数据，并粘贴到下面输入框中，locales格式为：{zh-CN:{title:'xxx'}, en:{title:'xx'},....其他语言}。
-    <pre>注：可直接使用 <code>console.log(JSON.stringify(locales))</code> ,在调试框里面复制数据</pre>
-    <pre>
+  <body>
+    <style>
+      code {
+        background: #eee;
+      }
+      .tips {
+        font-size: 12px;
+        color: #333;
+      }
+    </style>
+    <div>
+      <h5>js → excel</h5>
+      js转换excel,请从开发环境中复制需要翻译的locales数据，并粘贴到下面输入框中，locales格式为：{zh-CN:{title:'xxx'},
+      en:{title:'xx'},....其他语言}。
+      <pre>
+注：可直接使用 <code>console.log(JSON.stringify(locales))</code> ,在调试框里面复制数据</pre
+      >
+      <pre>
       
       <button onclick="toExcel()" >生成excel</button>
     </pre>
-    <textarea id="json" cols="30" rows="10"></textarea>
-  </div>
-  <hr>
-  <div>
-    <h5>excel→js:ipgard加密文件需先解码</h5>
-
+      <textarea id="json" cols="30" rows="10"></textarea>
+    </div>
+    <hr />
     <div>
+      <h5>js文件翻译</h5>
+
       <div>
-        excel转换为js，excel的第一行对应的是js的文件名，一般为语言代码
+        <div>
+          按照excel内容翻译成js对应内容，excel文件的第一行请更改为标准语言代码('zh-CN', 'en','es',('key')...)，其中key为,
+        </div>
+        <ol>
+          <li>如果选择了js模板，则会使用js模板生成对应的翻译js文件。</li>
+          <li>
+            如果没有选择js模板，则会使用excel的“key”列来作为json的key（如：excel
+            key为:'a.b.c'，语言列zh-CN为‘天气’，会 生成{a:b:{c:'天气'}}）。
+          </li>
+          <li>
+            如果勾选了百度辅助翻译，则excel中没有的内容会去百度翻译。（勾选后没有excel翻译源文件也能翻译）
+          </li>
+        </ol>
+        <div class="tips">
+          注：
+          <br />使用模板转换，会用正则替换模板的数据，能够准确的复制模板的写法，但一词多译时，只会选择最后那个模板对应翻译。
+          <br />使用key转换，能够准确的生成翻译对应关系，但生成的js文件只有一个写法：export
+          default {xxx}。excel必须有"key"为表头的列。推荐使用模板js文件生成翻译文件
+        </div>
       </div>
-      转换优先顺序为：使用模板转换 > 使用key转换。如果需要使用key转换，请不要选择模板js
-      <br>使用模板转换，会用正则替换模板的数据，能够准确的复制模板的写法，但一词多译时，只会选择最后那个模板对应翻译。
-      <br>使用key转换，能够准确的生成翻译对应关系，但生成的js文件只有一个写法：export default {xxx}。excel必须有"key"为表头的列
+
+      <div style="margin-top: 20px">
+        模板js: <input type="file" class="tojs-js" />
+      </div>
+      <div style="margin: 8px 0">
+        <input type="checkbox" class="baidu" value="true" />使用百度辅助翻译
+      </div>
+      <div>
+        目标语言：
+        <input type="checkbox" class="langs" value="zh-CN" />中文
+        <input type="checkbox" class="langs" value="en" />英语
+        <input type="checkbox" class="langs" value="es" />西班牙语言
+        <input type="checkbox" class="langs" value="ja" />日语
+        <input type="checkbox" class="langs" value="ru-RU" />俄语
+      </div>
+      <div>
+        excel文件：<input type="file" class="tojs-excel" />
+        <div>
+          excel文件的sheetName:
+          <input type="text" value="Sheet1" class="sheet-name" />
+        </div>
+      </div>
+
+      <button class="tojs" onclick="toJs()">转换成js</button>
+      <hr />
+      项目地址: git@192.168.19.225:web/i18n-xlsx-js.git
+      <br />
+      自主解码工具地址: git@192.168.19.225:web/ipguard-decrypt.git
     </div>
-
-
-    <div style="margin-top: 20px">
-      模板js: <input type="file" class="tojs-js">
-    </div>
-
-    <div>
-      excel文件：<input type="file" class="tojs-excel">
-      <div>excel文件的sheetName: <input type="text" value="Sheet1" class="sheet-name"></div>
-    </div>
-    <button class="tojs" onclick="toJs()">转换成js</button>
-    <hr>
-    项目地址: git@192.168.19.225:web/i18n-xlsx-js.git
-    <br>
-    自主解码工具地址: git@192.168.19.225:web/ipguard-decrypt.git
-  </div>
-  <script>
-    document.querySelector('input').checked = true
-    function toExcel() {
-      let locales = document.querySelector('#json').value
-      if (!locales) return alert('没有数据')
-      try{
-        locales = new Function(`return ${locales}`)()
-      } catch(err) {
-        return alert('格式不对')
-      }
-      if (!isObj(locales)) {
-        return alert('格式不对')
-      }
-
-      let arr = jsonsToArray(locales, true) // locales为{"zh-CN":{xxx}, en:{xxx}...}，参数二： 不使用key。使用key可以查询未翻译的字段
-      // arr = noRepeat(arr,'zh-CN') // 参数2：按中文去重,不传为按照所有语言翻译都相等来去重。可不使用。
-      downloadExcel(arr)
-    }
-
-    async function toJs() {
-      const temp = document.querySelector('.tojs-js').files[0]
-
-      const sheetName = document.querySelector('.sheet-name').value
-      const excelInput = document.querySelector('.tojs-excel')
-      const excelFile = excelInput.files[0]
-      if (!excelFile) {
-        return alert('先选excel文件')
-      }
-      let excelData
-      try {
-        excelData = await getXLSLdata(excelFile, sheetName)
-      } catch (e) {
-        return alert(e)
-      }
-
-      let needDatas
-      if (temp) {
-        const tempStr = await reader.readAsText(temp)
-        const tempLang = temp.name.replace(/\.js$/, '')
-        needDatas = getLangObjByTemp(tempStr, excelData, tempLang)
-      } else {
-
-        if (Object.keys(excelData[0]).indexOf('key') === -1) {
-          return alert('excel表格没有为"key"为表头的列,请选择模板')
+    <script>
+      document.querySelector('input').checked = true
+      function toExcel() {
+        let locales = document.querySelector('#json').value
+        if (!locales) return alert('没有数据')
+        try {
+          locales = new Function(`return ${locales}`)()
+        } catch (err) {
+          return alert('格式不对')
+        }
+        if (!isObj(locales)) {
+          return alert('格式不对')
         }
 
-        needDatas = getLangObjByKey(excelData)
+        let arr = jsonsToArray(locales, true) // locales为{"zh-CN":{xxx}, en:{xxx}...}，参数二： 不使用key。使用key可以查询未翻译的字段
+        // arr = noRepeat(arr,'zh-CN') // 参数2：按中文去重,不传为按照所有语言翻译都相等来去重。可不使用。
+        downloadExcel(arr)
       }
 
-      Object.keys(needDatas).forEach(lang => {
-        download(needDatas[lang], `${lang}.js`)
-      })
-    }
-  </script>
-</body>
+      async function toJs() {
+        const temp = document.querySelector('.tojs-js').files[0]
+        const isUseBaidu = document.querySelector('.baidu').checked
 
+        const sheetName = document.querySelector('.sheet-name').value
+        const excelInput = document.querySelector('.tojs-excel')
+        const excelFile = excelInput.files[0]
+        const toLangs = [...document.querySelectorAll('.langs:checked')].map(
+          it => it.value
+        )
+        if (!toLangs.length) {
+          return alert('请选择目标语言')
+        }
+
+        // 检查数据
+        if (!temp && !excelFile) {
+          return alert('请先选择需要翻译的文件')
+        }
+
+        if (!excelFile && !isUseBaidu) {
+          return alert('先选excel文件或者勾选百度翻译')
+        }
+
+        let excelData
+        if (excelFile) {
+          try {
+            excelData = await getXLSLdata(excelFile, sheetName)
+          } catch (e) {
+            return alert(e)
+          }
+        }
+
+        let needDatas
+        if (!temp && excelData && !Object.keys(excelData[0]).includes('key')) {
+          return alert('excel表格没有为"key"为表头的列,请选择模板')
+        }
+        // 检查数据结束
+        try {
+          if (temp) {
+            const tempStr = await reader.readAsText(temp)
+            const tempLang = temp.name.replace(/\.js$/, '')
+            needDatas = await getLangObjByTemp({
+              tempStr,
+              excelData,
+              tempLang,
+              isUseBaidu,
+              toLangs
+            })
+          } else {
+            needDatas = await getLangObjByKey({
+              excelData,
+              isUseBaidu,
+              toLangs
+            })
+          }
+        } catch (err) {
+          console.error(err)
+          alert(err)
+        }
+
+        Object.keys(needDatas).forEach(lang => {
+          download(needDatas[lang], `${lang}.js`)
+        })
+      }
+    </script>
+  </body>
 </html>

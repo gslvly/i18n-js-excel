@@ -39,33 +39,36 @@
       <h5>js文件翻译</h5>
 
       <div>
-        <div>
-          按照excel内容翻译成js对应内容，excel文件的第一行请更改为标准语言代码('zh-CN', 'en','es',('key')...)，其中key为,
-        </div>
         <ol>
           <li>如果选择了js模板，则会使用js模板生成对应的翻译js文件。</li>
           <li>
             如果没有选择js模板，则会使用excel的“key”列来作为json的key（如：excel
             key为:'a.b.c'，语言列zh-CN为‘天气’，会 生成{a:b:{c:'天气'}}）。
           </li>
-          <li>
-            如果勾选了百度辅助翻译，则excel中没有的内容会去百度翻译。（勾选后没有excel翻译源文件也能翻译）
-          </li>
         </ol>
         <div class="tips">
           注：
           <br />使用模板转换，会用正则替换模板的数据，能够准确的复制模板的写法，但一词多译时，只会选择最后那个模板对应翻译。
           <br />使用key转换，能够准确的生成翻译对应关系，但生成的js文件只有一个写法：export
-          default {xxx}。excel必须有"key"为表头的列。推荐使用模板js文件生成翻译文件
+          default
+          {xxx}，且只能生成一个文件。excel必须有"key"为表头的列。推荐使用模板js文件生成翻译文件，
         </div>
       </div>
 
       <div style="margin-top: 20px">
-        模板js: <input type="file" class="tojs-js" />
+        模板js语言：<input type="radio" class="org-langs" value="zh-CN" />中文
+        <input type="radio" class="org-langs" value="en" />英语
+        <input type="radio" class="org-langs" value="es" />西班牙语言
+        <input type="radio" class="org-langs" value="ja" />日语
+        <input type="radio" class="org-langs" value="ru-RU" />俄语
+        <br />
+        模板内容：（js文件的内容）
+        <br />
+        <textarea class="tojs-js" cols="30" rows="10">
+export default {name:'示例名字'}</textarea
+        >
       </div>
-      <div style="margin: 8px 0">
-        <input type="checkbox" class="baidu" value="true" />使用百度辅助翻译
-      </div>
+
       <div>
         目标语言：
         <input type="checkbox" class="langs" value="zh-CN" />中文
@@ -75,13 +78,24 @@
         <input type="checkbox" class="langs" value="ru-RU" />俄语
       </div>
       <div>
-        excel文件：<input type="file" class="tojs-excel" />
+        excel文件作为翻译源：<input type="file" class="tojs-excel" />
+
+        <div class="tips">
+          excel文件第一行必须为标准语言代码('zh-CN','en','es',('key')...),其中key为'a.b.c'
+          非必需
+        </div>
         <div>
           excel文件的sheetName:
           <input type="text" value="Sheet1" class="sheet-name" />
         </div>
       </div>
-
+      <div style="margin: 8px 0">
+        <input
+          type="checkbox"
+          class="baidu"
+          value="true"
+        />使用百度辅助翻译（excel中缺少的翻译，百度来翻译）
+      </div>
       <button class="tojs" onclick="toJs()">转换成js</button>
       <hr />
       项目地址: git@192.168.19.225:web/i18n-xlsx-js.git
@@ -108,7 +122,8 @@
       }
 
       async function toJs() {
-        const temp = document.querySelector('.tojs-js').files[0]
+        const tempStr = document.querySelector('.tojs-js').value
+        const tempLang = document.querySelector('.org-langs:checked').value
         const isUseBaidu = document.querySelector('.baidu').checked
 
         const sheetName = document.querySelector('.sheet-name').value
@@ -122,8 +137,8 @@
         }
 
         // 检查数据
-        if (!temp && !excelFile) {
-          return alert('请先选择需要翻译的文件')
+        if (!tempStr && !excelFile) {
+          return alert('请先选择需要翻译的内容')
         }
 
         if (!excelFile && !isUseBaidu) {
@@ -140,14 +155,18 @@
         }
 
         let needDatas
-        if (!temp && excelData && !Object.keys(excelData[0]).includes('key')) {
-          return alert('excel表格没有为"key"为表头的列,请选择模板')
+        if (
+          !tempStr &&
+          excelData &&
+          !Object.keys(excelData[0]).includes('key')
+        ) {
+          return alert(
+            'excel表格没有为"key"为表头的列,请粘贴模板内容，选择模板语言'
+          )
         }
         // 检查数据结束
         try {
-          if (temp) {
-            const tempStr = await reader.readAsText(temp)
-            const tempLang = temp.name.replace(/\.js$/, '')
+          if (tempStr) {
             needDatas = await getLangObjByTemp({
               tempStr,
               excelData,

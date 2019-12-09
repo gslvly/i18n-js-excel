@@ -395,14 +395,13 @@ async function trans({ from = 'zh-CN', to = 'en', q }) {
     queryArr.push(start(it))
   }
   const resdata = await Promise.all(queryArr)
-
   return resdata.reduce((a, b) => {
     return {
-      from: toAutoLang[a.from] || a.from,
-      to: toAutoLang[a.to] || a.to,
+      from: toAutoLang[b.from] || b.from,
+      to: toAutoLang[b.to] || b.to,
       trans_result: [...a.trans_result, ...b.trans_result]
     }
-  })
+  },{trans_result:[]})
 }
 // 获取子节长度
 function getLength(val) {

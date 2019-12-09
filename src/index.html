@@ -56,16 +56,15 @@
       </div>
 
       <div style="margin-top: 20px">
-        模板js语言：<input type="radio" class="org-langs" value="zh-CN" />中文
+        源语言：<input type="radio" class="org-langs" value="zh-CN" />中文
         <input type="radio" class="org-langs" value="en" />英语
         <input type="radio" class="org-langs" value="es" />西班牙语言
         <input type="radio" class="org-langs" value="ja" />日语
         <input type="radio" class="org-langs" value="ru-RU" />俄语
         <br />
-        模板内容：（js文件的内容）
+        待翻译内容：（例如：export default {name: '名字','age':"年龄"}，一般可以直接全选复制粘贴zh-CN.js）
         <br />
-        <textarea class="tojs-js" cols="30" rows="10"></textarea
-        >
+        <textarea class="tojs-js" cols="30" rows="10"></textarea>
       </div>
 
       <div>
@@ -95,7 +94,7 @@
           value="true"
         />使用百度辅助翻译（excel中缺少的翻译，百度来翻译）
       </div>
-      <button class="tojs" onclick="toJs()">转换成js</button>
+      <button class="tojs" onclick="toJs()">翻译</button>
     </div>
     <script>
       document.querySelector('input').checked = true

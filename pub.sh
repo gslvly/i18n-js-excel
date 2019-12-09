@@ -2,7 +2,7 @@
 # servers=("ip:dir" "ip:dir")
 office="192.168.19.13:/web-tools/i18n-xlsx-js"
 gs="gusheng123.top:/root/app/i18n-js-excel"
-servers=($gs)
+servers=($office $gs)
 
 for server in  ${servers[@]};
 do

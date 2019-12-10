@@ -20,6 +20,13 @@
         font-size: 12px;
         color: #333;
       }
+      .fanyi {
+        display: flex;
+        align-items: center;
+        margin-top: 20px;
+        justify-content: space-between;
+        width: 1200px;
+      }
     </style>
     <div>
       <h5>js → excel</h5>
@@ -39,60 +46,104 @@
       <h5>js文件翻译</h5>
 
       <div>
-        <ol>
-          <li>如果输入了js模板，则会使用js模板生成对应的翻译js文件。</li>
+        <ul>
           <li>
-            如果没有js模板内容，则会使用excel的“key”列来作为json的key（如：excel
-            key为:'a.b.c'，语言列zh-CN为‘天气’，会 生成{a:b:{c:'天气'}}）。
+            如果没有源语言内容，则会使用excel的“key”列来作为json的key（如：excel
+            key为:'a.b.c'，语言列zh-CN为‘天气’，选择目标语言为中文时生成：{a:b:{c:'天气'}}）。
           </li>
-        </ol>
-        <div class="tips">
-          注：
-          <br />使用模板转换，会用正则替换模板的数据，能够准确的复制模板的写法，但一词多译时，只会选择最后那个模板对应翻译。
-          <br />使用key转换，能够准确的生成翻译对应关系，但生成的js文件只有一个写法：export
-          default
-          {xxx}，且只能生成一个文件。excel必须有"key"为表头的列。推荐使用模板js文件生成翻译文件，
-        </div>
+        </ul>
       </div>
-
-      <div style="margin-top: 20px">
-        源语言：<input type="radio" class="org-langs" value="zh-CN" />中文
-        <input type="radio" class="org-langs" value="en" />英语
-        <input type="radio" class="org-langs" value="es" />西班牙语言
-        <input type="radio" class="org-langs" value="ja" />日语
-        <input type="radio" class="org-langs" value="ru-RU" />俄语
-        <br />
-        待翻译内容：（例如：export default {name: '名字','age':"年龄"}，一般可以直接全选复制粘贴zh-CN.js）
-        <br />
-        <textarea class="tojs-js" cols="30" rows="10"></textarea>
-      </div>
-
-      <div>
-        目标语言：
-        <input type="checkbox" class="langs" value="zh-CN" />中文
-        <input type="checkbox" class="langs" value="en" />英语
-        <input type="checkbox" class="langs" value="es" />西班牙语言
-        <input type="checkbox" class="langs" value="ja" />日语
-        <input type="checkbox" class="langs" value="ru-RU" />俄语
-      </div>
-      <div>
-        excel文件作为翻译源：<input type="file" class="tojs-excel" />
-
-        <div class="tips">
-          excel文件第一行必须为标准语言代码('zh-CN','en','es',('key')...),其中key为'a.b.c'
-          非必需
-        </div>
+      <div class="fanyi">
         <div>
-          excel文件的sheetName:
-          <input type="text" value="Sheet1" class="sheet-name" />
+          源语言：<input
+            type="radio"
+            class="org-langs"
+            name="org-langs"
+            value="zh-CN"
+          />中文
+          <input
+            type="radio"
+            class="org-langs"
+            name="org-langs"
+            value="en"
+          />英语
+          <input
+            type="radio"
+            class="org-langs"
+            name="org-langs"
+            value="es"
+          />西班牙语言
+          <input
+            type="radio"
+            class="org-langs"
+            name="org-langs"
+            value="ja"
+          />日语
+          <input
+            type="radio"
+            class="org-langs"
+            name="org-langs"
+            value="ru-RU"
+          />俄语
+          <br />
+
+          <textarea class="temp" cols="80" rows="20"></textarea>
+        </div>
+
+        <div class="target">
+          目标语言：
+          <input
+            type="radio"
+            class="to-langs"
+            name="to-langs"
+            value="en"
+            checked
+          />英语
+          <input
+            type="radio"
+            class="to-langs"
+            name="to-langs"
+            value="zh-CN"
+          />中文
+          <input
+            type="radio"
+            class="to-langs"
+            name="to-langs"
+            value="es"
+          />西班牙语言
+          <input type="radio" class="to-langs" name="to-langs" value="ja" />日语
+          <input
+            type="radio"
+            class="to-langs"
+            name="to-langs"
+            value="ru-RU"
+          />俄语
+          <br />
+          <textarea class="result" cols="80" rows="20"></textarea>
         </div>
       </div>
-      <div style="margin: 8px 0">
-        <input
-          type="checkbox"
-          class="baidu"
-          value="true"
-        />使用百度辅助翻译（excel中缺少的翻译，百度来翻译）
+
+      <div style="margin-top: 4px;">
+        字典选项：
+        <ul>
+          <li>
+            excel文件作为翻译字典：<input type="file" class="tojs-excel" />
+            <span class="tips">
+              （excel文件第一行必须为标准语言代码('zh-CN','en','es',('key')...),其中key为'a.b.c'）
+            </span>
+            <div>
+              excel文件的sheetName:
+              <input type="text" value="Sheet1" class="sheet-name" />
+            </div>
+          </li>
+          <li>
+            <input
+              type="checkbox"
+              class="baidu"
+              value="true"
+            />使用百度辅助翻译（优先使用excel字典翻译）
+          </li>
+        </ul>
       </div>
       <button class="tojs" onclick="toJs()">翻译</button>
     </div>
@@ -116,21 +167,23 @@
       }
 
       async function toJs() {
-        const tempStr = document.querySelector('.tojs-js').value
+        const tempStr = document.querySelector('.temp').value
         const tempLang = document.querySelector('.org-langs:checked').value
         const isUseBaidu = document.querySelector('.baidu').checked
 
         const sheetName = document.querySelector('.sheet-name').value
         const excelInput = document.querySelector('.tojs-excel')
         const excelFile = excelInput.files[0]
-        const toLangs = [...document.querySelectorAll('.langs:checked')].map(
-          it => it.value
-        )
-        if (!toLangs.length) {
-          return alert('请选择目标语言')
-        }
+        const toLang = document.querySelector('.to-langs:checked').value
 
         // 检查数据
+        if (!toLang) {
+          return alert('请选择目标语言')
+        }
+        if (tempStr && toLang === tempLang) {
+          return alert('目标语言与源语言不可相同')
+        }
+
         if (!tempStr && !excelFile) {
           return alert('请先选择需要翻译的内容')
         }
@@ -148,7 +201,6 @@
           }
         }
 
-        let needDatas
         if (
           !tempStr &&
           excelData &&
@@ -159,30 +211,29 @@
           )
         }
         // 检查数据结束
+
         try {
+          let dataStr = ''
           if (tempStr) {
-            needDatas = await getLangObjByTemp({
+            dataStr = await getLangObjByTemp({
               tempStr,
               excelData,
               tempLang,
               isUseBaidu,
-              toLangs
+              toLang
             })
           } else {
-            needDatas = await getLangObjByKey({
+            dataStr = await getLangObjByKey({
               excelData,
               isUseBaidu,
-              toLangs
+              toLang
             })
           }
+          document.querySelector('.result').value = dataStr
         } catch (err) {
           console.error(err)
           alert(err)
         }
-
-        Object.keys(needDatas).forEach(lang => {
-          download(needDatas[lang], `${lang}.js`)
-        })
       }
     </script>
   </body>

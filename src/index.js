@@ -51,6 +51,7 @@ const getXLSLdata = async (file, sheetName) => {
   if (sheetName) {
     return toJSON(sheetName)
   }
+
   return Object.values(workbook.SheetNames).map(toJSON)
 }
 /**
@@ -59,48 +60,35 @@ const getXLSLdata = async (file, sheetName) => {
  * @param {[{'zh-CN':'嗯',en:'enen'}]} excelData
  * @param {'zh-CN'} tempLang
  * @param  {true or false} isUseBaidu
- * @returns {'zh-CN': str, en:'str2',...}
+ * @returns {targetstr}
  */
 const getLangObjByTemp = async function({
   tempStr,
   excelData = [],
   tempLang,
   isUseBaidu,
-  toLangs
+  toLang
 }) {
-  const data = {}
-  toLangs = toLangs.filter(it => it !== tempLang)
   const cObj = {} // {你好：{'zh-CN':'你好',en:'hello'}}
   excelData.forEach(it => {
     cObj[it[tempLang]] = it
   })
-  const reg =/(?<=:\s*["'`]{1}\s*)(?=\S).*(?=\s*['"`]{1}\s*[\n,}])/g
-
-  const values = tempStr.match(reg)
+  const values = tempStr.match(window.config.reg)
   if (isUseBaidu) {
-    const needbaiduTrans = toLangs
-      .map(lang => {
-        const needTrans = values.filter(
-          value => !cObj[value] || !cObj[value][lang]
-        )
-        if (needTrans.length) {
-          return {
-            from: tempLang,
-            to: lang,
-            q: [...new Set(needTrans)]
-          }
-        }
+    const needTrans = values.filter(
+      value => !cObj[value] || !cObj[value][toLang]
+    )
+    if (needTrans.length) {
+      /**
+       * baiduback: {form:'zh',to='en', trans_result:[{src:'我是谁',dst:'who are you'}]}
+       */
+      const baiduBack = await trans({
+        from: tempLang,
+        to: toLang,
+        q: [...new Set(needTrans)]
       })
-      .filter(Boolean)
 
-    /**
-     * baiduback: [{form:'zh',to='en', trans_result:[{src:'我是谁',dst:'who are you'}]}]
-     */
-    const baiduBack = await Promise.all(needbaiduTrans.map(trans))
-    baiduBack.forEach(it => {
-      const toLang = it.to
-      const result = it.trans_result
-      result.forEach(res => {
+      baiduBack.trans_result.forEach(res => {
         if (!cObj[res.src]) {
           cObj[res.src] = {}
         }
@@ -108,14 +96,12 @@ const getLangObjByTemp = async function({
           cObj[res.src][toLang] = res.dst
         }
       })
-    })
+    }
   }
 
-  toLangs.map(lang => {
-    if (lang === tempLang) return
-    data[lang] = tempStr.replace(reg, function(value) {
-      return (cObj[value] && cObj[value][lang]) || ''
-    })
+  const data = tempStr.replace(window.config.reg, function(value) {
+    value = value.trim()
+    return (cObj[value] && cObj[value][toLang]) || ''
   })
 
   return data
@@ -125,10 +111,9 @@ const getLangObjByTemp = async function({
  *
  * @param {Array [{'zh-CN':'啥',en: 'a', key:'a.b.c'}]} excelData
  */
-const getLangObjByKey = async function({ excelData, isUseBaidu, toLangs }) {
+const getLangObjByKey = async function({ excelData, isUseBaidu, toLang }) {
   const data = {}
 
-  toLangs.forEach(lang => (data[lang] = {}))
   function setKeyObj(keypath, value, obj) {
     keypath = keypath.split('.')
     const lastKey = keypath.pop()
@@ -149,12 +134,8 @@ const getLangObjByKey = async function({ excelData, isUseBaidu, toLangs }) {
 
     obj2[lastKey] = value
   }
-  toLangs.forEach(lang => {
-    data[lang] = {}
-  })
 
-  // const needbaiduTrans = {} // {'zh-CN':[{to:'es',value:'翻译成es语言'}], en:[]}
-  const needbaiduTrans = {} // {'zh-CN': {es: [{q:'从中文翻译到es文', key:'a.b.c'}]}}
+  const needbaiduTrans = {} // {'zh-CN': [{q:'要翻译的文本', key:'a.b.c'}]}
   excelData.forEach(it => {
     const { key, ...obj } = it
     if (!key) {
@@ -171,47 +152,34 @@ const getLangObjByKey = async function({ excelData, isUseBaidu, toLangs }) {
     } else {
       find = Object.entries(obj).find(([lang, value]) => value)
     }
-
-    for (let lang of toLangs) {
-      if (!data[lang]) continue
-      const value = obj[lang]
-      setKeyObj(key, value, data[lang])
-      if (isUseBaidu && !value && find) {
-        const [tempLang, q] = find
-        if (!needbaiduTrans[tempLang]) {
-          needbaiduTrans[tempLang] = {}
-        }
-        if (!needbaiduTrans[tempLang][lang]) {
-          needbaiduTrans[tempLang][lang] = []
-        }
-        needbaiduTrans[tempLang][lang].push({ q, key })
+    const value = obj[toLang]
+    setKeyObj(key, value, data)
+    if (isUseBaidu && !value && find) {
+      const [tempLang, q] = find
+      if (!needbaiduTrans[tempLang]) {
+        needbaiduTrans[tempLang] = []
       }
+      needbaiduTrans[tempLang].push({ q: q.trim(), key: key.trim() })
     }
   })
-  // [{from: 'zh', to="en",q:['我是谁','你是谁']}]
-  for (let [tempLang, tempLangData] of Object.entries(needbaiduTrans)) {
-    for (let [toLang, originData] of Object.entries(tempLangData)) {
-      const { q, cObj } = originData.reduce(
-        (pre, next) => {
-          pre.q.push(next.q)
-          pre.cObj[next.q] = next.key
-          return pre
-        },
-        { q: [], cObj: {} }
-      )
 
-      const backdata = await trans({ from: tempLang, to: toLang, q })
-      
-      backdata.trans_result.forEach((it, index) => {
-        setKeyObj(cObj[it.src], it.dst, data[toLang])
-      })
-    }
+  // cObj: {"我是谁": 'a.b.c'}
+  for (let [tempLang, tempData] of Object.entries(needbaiduTrans)) {
+    const { q, cObj } = tempData.reduce(
+      (pre, next) => {
+        pre.q.push(next.q)
+        pre.cObj[next.q] = next.key
+        return pre
+      },
+      { q: [], cObj: {} }
+    )
+    const backdata = await trans({ from: tempLang, to: toLang, q })
+
+    backdata.trans_result.forEach((it, index) => {
+      setKeyObj(cObj[it.src], it.dst, data)
+    })
   }
-
-  toLangs.forEach(lang => {
-    data[lang] = `export default  ${JSON.stringify(data[lang])}`
-  })
-  return data
+  return JSON.stringify(data)
 }
 
 const download = function(str, name) {
@@ -317,7 +285,8 @@ const noRepeat = function(arr, baseLang) {
 
 window.config = {
   key: 'HtH9rRtduT3mWt201Ysm',
-  appid: '20191204000362867'
+  appid: '20191204000362867',
+  reg: /(?<=:\s*["'`]{1}\s*).*(?=\s*['"`]{1}\s*)/g // .不匹配换行和行结束符
 }
 
 /**
@@ -395,13 +364,16 @@ async function trans({ from = 'zh-CN', to = 'en', q }) {
     queryArr.push(start(it))
   }
   const resdata = await Promise.all(queryArr)
-  return resdata.reduce((a, b) => {
-    return {
-      from: toAutoLang[b.from] || b.from,
-      to: toAutoLang[b.to] || b.to,
-      trans_result: [...a.trans_result, ...b.trans_result]
-    }
-  },{trans_result:[]})
+  return resdata.reduce(
+    (a, b) => {
+      return {
+        from: toAutoLang[b.from] || b.from,
+        to: toAutoLang[b.to] || b.to,
+        trans_result: [...a.trans_result, ...b.trans_result]
+      }
+    },
+    { trans_result: [] }
+  )
 }
 // 获取子节长度
 function getLength(val) {

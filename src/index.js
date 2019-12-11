@@ -286,7 +286,7 @@ const noRepeat = function(arr, baseLang) {
 window.config = {
   key: 'HtH9rRtduT3mWt201Ysm',
   appid: '20191204000362867',
-  reg: /(?<=:\s*["'`]{1}\s*).*(?=\s*['"`]{1}\s*)/g // .不匹配换行和行结束符
+  reg:/(?<=:\s*['"`])((?<=').+?(?=')|(?<=").+?(?=")|(?<=`).+?(?=`))/g 
 }
 
 /**

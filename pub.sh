@@ -1,8 +1,8 @@
 #多个服务器，servers中 每个服务器用空格隔开，ip与目录地址用分号隔开
 # servers=("ip:dir" "ip:dir")
-office="192.168.19.13:/web-tools/i18n-xlsx-js"
-gs="gusheng123.top:/root/app/i18n-js-excel"
-servers=($office $gs)
+office="10.15.9.114:/web-tools/i18n-xlsx-js"
+# gs="gusheng123.top:/root/app/i18n-js-excel"
+servers=($office)
 
 for server in  ${servers[@]};
 do

@@ -1,6 +1,21 @@
 const { toString } = Object.prototype
 const isObj = val => toString.call(val) === '[object Object]'
 const isArr = val => toString.call(val) === '[object Array]'
+// 百度翻译的目标语言
+window.toBaiduTransLang = {
+  'zh-CN': 'zh',
+  'en-us': 'en',
+  'ru-RU': 'ru',
+  es: 'spa',
+  ja: 'jp',
+  'ja-JP': 'jp'
+}
+window.toAutoLang = {
+  zh: 'zh-CN',
+  ru: 'ru-RU',
+  spa: 'es',
+  jp: 'ja'
+}
 
 const reader = new Proxy(Object.create(null), {
   get(target, key) {
@@ -26,38 +41,69 @@ const getXLSLdata = async (file, sheetName) => {
   buffer = new Uint8Array(buffer)
   const workbook = XLSX.read(buffer, { type: 'array' })
   console.log('所有sheetName:', workbook.SheetNames)
-  if(workbook.SheetNames.indexOf(sheetName) === -1) throw `sheetName：${sheetName} is not in ${JSON.stringify(workbook.SheetNames)}`
+  if (workbook.SheetNames.indexOf(sheetName) === -1)
+    throw `sheetName：${sheetName} is not in ${JSON.stringify(
+      workbook.SheetNames
+    )}`
   const toJSON = sheetName =>
     XLSX.utils.sheet_to_json(workbook.Sheets[sheetName])
 
   if (sheetName) {
     return toJSON(sheetName)
   }
+
   return Object.values(workbook.SheetNames).map(toJSON)
 }
 /**
  *
  * @param {a:1,b:{c:'啥子'}} tempStr
  * @param {[{'zh-CN':'嗯',en:'enen'}]} excelData
- * @param {'zh-CN'} temLang
- * @returns {'zh-CN': str, en:'str2',...}
+ * @param {'zh-CN'} tempLang
+ * @param  {true or false} isUseBaidu
+ * @returns {targetstr}
  */
-const getLangObjByTemp = function(tempStr, excelData, temLang) {
-  const langs = Object.keys(excelData[0]).filter(it => it !== 'key')
-  const data = {}
-  const cObj = {} // {你好：['zh-CN':'你好',en:'hello']}
+const getLangObjByTemp = async function({
+  tempStr,
+  excelData = [],
+  tempLang,
+  isUseBaidu,
+  toLang
+}) {
+  const cObj = {} // {你好：{'zh-CN':'你好',en:'hello'}}
   excelData.forEach(it => {
-    cObj[it[temLang]] = it
+    cObj[it[tempLang]] = it
   })
-  langs.map(lang => {
-    if (lang === temLang) return
-    data[lang] = tempStr.replace(
-      /(?<=:\s*["']{1}\s*)(?=\S).*(?=\s*['"]{1}\s*[\n,])/g,
-      function(value) {
-        return (cObj[value] && cObj[value][lang]) || ''
-      }
+  const values = tempStr.match(window.config.reg)
+  if (isUseBaidu) {
+    const needTrans = values.filter(
+      value => !cObj[value] || !cObj[value][toLang]
     )
+    if (needTrans.length) {
+      /**
+       * baiduback: {form:'zh',to='en', trans_result:[{src:'我是谁',dst:'who are you'}]}
+       */
+      const baiduBack = await trans({
+        from: tempLang,
+        to: toLang,
+        q: [...new Set(needTrans)]
+      })
+
+      baiduBack.trans_result.forEach(res => {
+        if (!cObj[res.src]) {
+          cObj[res.src] = {}
+        }
+        if (!cObj[res.src][toLang]) {
+          cObj[res.src][toLang] = res.dst
+        }
+      })
+    }
+  }
+
+  const data = tempStr.replace(window.config.reg, function(value) {
+    value = value.trim()
+    return (cObj[value] && cObj[value][toLang]) || ''
   })
+
   return data
 }
 
@@ -65,13 +111,13 @@ const getLangObjByTemp = function(tempStr, excelData, temLang) {
  *
  * @param {Array [{'zh-CN':'啥',en: 'a', key:'a.b.c'}]} excelData
  */
-const getLangObjByKey = function(excelData) {
-  const langs = Object.keys(excelData[0]).filter(it => it !== 'key')
+const getLangObjByKey = async function({ excelData, isUseBaidu, toLang }) {
   const data = {}
-  langs.forEach(lang => (data[lang] = {}))
+
   function setKeyObj(keypath, value, obj) {
     keypath = keypath.split('.')
     const lastKey = keypath.pop()
+
     const obj2 = keypath.reduce(
       (obj, key) => (obj[key] = isObj(obj[key]) ? obj[key] : {}),
       obj
@@ -89,16 +135,51 @@ const getLangObjByKey = function(excelData) {
     obj2[lastKey] = value
   }
 
+  const needbaiduTrans = {} // {'zh-CN': [{q:'要翻译的文本', key:'a.b.c'}]}
   excelData.forEach(it => {
     const { key, ...obj } = it
-    for (let [lang, value] of Object.entries(obj)) {
-      setKeyObj(key, value, data[lang])
+    if (!key) {
+      return
+    }
+
+    // 找到有翻译的数据，如果其他语言缺少值，则从此值去翻译成目标值
+    /**
+     * find:[lang,value]
+     */
+    let find
+    if (obj['zh-CN']) {
+      find = ['zh-CN', obj['zh-CN']] // 中文优先作为源语言
+    } else {
+      find = Object.entries(obj).find(([lang, value]) => value)
+    }
+    const value = obj[toLang]
+    setKeyObj(key, value, data)
+    if (isUseBaidu && !value && find) {
+      const [tempLang, q] = find
+      if (!needbaiduTrans[tempLang]) {
+        needbaiduTrans[tempLang] = []
+      }
+      needbaiduTrans[tempLang].push({ q: q.trim(), key: key.trim() })
     }
   })
-  langs.forEach(lang => {
-    data[lang] = `export default  ${JSON.stringify(data[lang])}`
-  })
-  return data
+
+  // cObj: {"我是谁": 'a.b.c'}
+  for (let [tempLang, tempData] of Object.entries(needbaiduTrans)) {
+    const { q, cObj } = tempData.reduce(
+      (pre, next) => {
+        pre.q.push(next.q)
+        pre.cObj[next.q] = next.key
+        return pre
+      },
+      { q: [], cObj: {} }
+    )
+    const backdata = await trans({ from: tempLang, to: toLang, q })
+
+    backdata.trans_result.forEach((it, index) => {
+      setKeyObj(cObj[it.src], it.dst, data)
+    })
+  }
+  return JSON.stringify(data)
 }
 
 const download = function(str, name) {
@@ -185,8 +266,8 @@ const downloadExcel = function(arr) {
  * @param {Array [{"zh-CN":'哈哈', en:'haha'},...]} arr
  * @param {String 'zh-CN'} baseLang
  *基于baseLang去重,不传则根据元素值是否相等来去重。
-*/
- const noRepeat = function(arr, baseLang) {
+ */
+const noRepeat = function(arr, baseLang) {
   const data = {}
   arr.forEach(it => {
     let baseKey
@@ -200,4 +281,111 @@ const downloadExcel = function(arr) {
     data[baseKey] = it
   })
   return Object.values(data)
+}
+
+window.config = {
+  key: 'HtH9rRtduT3mWt201Ysm',
+  appid: '20191204000362867',
+  reg:/(?<=:\s*['"`])((?<=').+?(?=')|(?<=").+?(?=")|(?<=`).+?(?=`))/g 
+}
+
+/**
+ *
+ * @param {from: 'zh-CN', to="en",q:['我是谁','你是谁']} param0
+ * @returns {from:'zh-CN',to='en', trans_result:[{src:'我是谁',dst:'who are you'}]}
+ */
+async function trans({ from = 'zh-CN', to = 'en', q }) {
+  from = toBaiduTransLang[from] || from
+  to = toBaiduTransLang[to] || to
+  const { key, appid } = window.config
+  if (!q || !q.length) {
+    throw '没有翻译文'
+  }
+  function start(q) {
+    const salt = `${Date.now()}${Math.random() * 10 ** 20}`
+    const sign = MD5(appid + q + salt + key)
+    q = encodeURIComponent(q)
+    const query = {
+      dict: 1,
+      tts: 1,
+      sign,
+      appid,
+      from,
+      to,
+      callback: 'transcb' + salt,
+      salt
+    }
+    let url = `https://api.fanyi.baidu.com/api/trans/vip/translate?q=${q}`
+
+    for (let key in query) {
+      url += `&${key}=${query[key]}`
+    }
+    const script = document.createElement('script')
+    script.src = url
+    document.body.append(script)
+
+    return new Promise(resolve => {
+      window['transcb' + salt] = function(val) {
+        Reflect.deleteProperty(window, 'transcb' + salt)
+        resolve(val)
+      }
+      document.body.removeChild(script)
+    })
+  }
+
+  let arr = []
+  if (q.length === 1) {
+    arr.push(q[0])
+  }
+  q.reduce((pre, next, i) => {
+    let add = `${pre}\n${next}`
+    if (i === q.length - 1) {
+      arr.push(add)
+      return
+    }
+    if (getLength(add) > 1000) {
+      // 1000个子节去请求一次
+      arr.push(pre)
+      return next
+    }
+
+    return add
+  })
+
+  let queryArr = []
+  let first = true
+  for (let it of arr) {
+    if (!first) {
+      await new Promise(res => {
+        setTimeout(res, 2000) // 翻译间隔要求最少1秒
+      })
+    }
+    first = false
+    queryArr.push(start(it))
+  }
+  const resdata = await Promise.all(queryArr)
+  return resdata.reduce(
+    (a, b) => {
+      return {
+        from: toAutoLang[b.from] || b.from,
+        to: toAutoLang[b.to] || b.to,
+        trans_result: [...a.trans_result, ...b.trans_result]
+      }
+    },
+    { trans_result: [] }
+  )
+}
+// 获取子节长度
+function getLength(val) {
+  var str = new String(val)
+  var bytesCount = 0
+  for (var i = 0, n = str.length; i < n; i++) {
+    var c = str.charCodeAt(i)
+    if ((c >= 0x0001 && c <= 0x007e) || (0xff60 <= c && c <= 0xff9f)) {
+      bytesCount += 1
+    } else {
+      bytesCount += 2
+    }
+  }
+  return bytesCount
 }

@@ -20,7 +20,7 @@
 	<script src="shim.min.js"></script>
 	<script src="xlsx.full.min.js"></script>
 	<script src="md5.js"></script>
-	<script src="index.js"></script>
+	<script src="index.js?1"></script>
 </head>
 
 <body>
@@ -70,7 +70,7 @@
 				</li>
 				<li>
 					翻译的方式是将匹配的类容做翻译，目前匹配正则:/(?
-					<=:\s*('|"|`)).+(?=\1) /g，冒号后面有(`"')包含的字符串 <br />若需要更改匹配规则，请在console中修改window.config.reg
+					<=:\s*('|"|`))[^\\1]+(?=\1) /g，冒号后面有(`"')包含的字符串 <br />若需要更改匹配规则，请在console中修改window.config.reg
 				</li>
 			</ul>
 		</div>

@@ -284,7 +284,7 @@ const noRepeat = function(arr, baseLang) {
 }
 
 window.config = {
-  key: 'HtH9rRtduT3mWt201Ysm',
+  key: 'UI443DVfeS34I6cIPvC2',
   appid: '20191204000362867',
   reg:/(?<=:\s*['"`])((?<=').+?(?=')|(?<=").+?(?=")|(?<=`).+?(?=`))/g ,
   reg:/(?<=:\s*('|"|`))((?!\1).)+(?=\1)/g

@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-	<link rel="icon" href="icon.ico">
+	<link rel="icon" href="/icon.ico">
 	<!-- Global site tag (gtag.js) - Google Analytics -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=G-1HYWBQY2GC"></script>
 	<script>
@@ -168,16 +168,16 @@
 				return alert('先选excel文件或者勾选百度翻译')
 			}
 
-			let excelData
 			if (excelFile) {
 				try {
-					excelData = await getXLSLdata(excelFile, sheetName)
+					window.excelData = await getXLSLdata(excelFile, sheetName)
+					console.log(window.excelData)
 				} catch (e) {
 					return alert(e)
 				}
 			}
 
-			if (!tempStr && excelData && !Object.keys(excelData[0]).includes('key')) {
+			if (!tempStr && window.excelData && !Object.keys(window.excelData[0]).includes('key')) {
 				return alert('excel表格没有为"key"为表头的列,请粘贴模板内容，选择模板语言')
 			}
 			// 检查数据结束

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>lang-key</title>
+    <script src="index.js?3"></script>
+
+    <script src="shim.min.js"></script>
+    <script src="xlsx.full.min.js"></script>
+    <script src="md5.js"></script>
+  </head>
+
+  <body>
+    <style>
+      .title {
+        display: flex;
+      }
+    </style>
+    <div style="background-color: rgb(240, 233, 223)">
+      <h2>翻译好的json(例如en.json {"中文":"chinese"}) 导出excel</h2>
+      <div class="title">
+        key语言：
+        <input type="text" class="keylang" />
+      </div>
+      <hr />
+      <button onclick="add()" style="margin-bottom: 12px">添加语言</button>
+      <div class="content">
+        <div class="item">
+          <div class="label">
+            翻译语言：
+            <input type="text" />
+          </div>
+
+          <div>
+            <textarea rows="20" cols="100"> </textarea>
+          </div>
+        </div>
+      </div>
+      <hr />
+      <button onclick="conf()">导出excel</button>
+      <hr />
+    </div>
+    <div style="background-color: rgb(228, 219, 236)">
+      <h2>excel 生成json，每一列的第一行为语言</h2>
+      <button onclick="selectFiles()">选择文件</button>
+
+      <div class="show">
+
+      </div>
+    </div> 
+
+    <script>
+      function add() {
+        const node = document.querySelector(".item").cloneNode(true);
+        node.querySelector("textarea").value = "";
+        document.querySelector(".content").appendChild(node);
+      }
+
+      function toObj(str) {
+        return new Function(`return ${str}`)();
+      }
+      function conf() {
+        const items = document.querySelectorAll(".item");
+        const keyLang = document.querySelector(".keylang").value;
+        const info = [...items].map((it) => {
+          return {
+            lang: it.querySelector("input").value,
+            obj: toObj(it.querySelector("textarea").value),
+          };
+        });
+        console.log(info);
+        const arr = [];
+        const keys = new Set();
+        info.forEach((it) =>
+          Object.keys(it.obj).forEach((key) => keys.add(key))
+        );
+        keys.forEach((key) => {
+          const v = {};
+          info.forEach((it) => {
+            v[it.lang] = it.obj[key];
+          });
+          v[keyLang] = key;
+          arr.push(v);
+        });
+        downloadExcel(arr);
+      }
+
+      async function selectFiles() {
+        const files = await selectFile({
+          accept: ".xlsx",
+        });
+
+        const file = files[0];
+        let buffer = await reader.readAsArrayBuffer(file);
+        buffer = new Uint8Array(buffer);
+        const workbook = XLSX.read(buffer, { type: "array" });
+
+        const toJSON = (sheetName) =>
+          XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        const arr =   toJSON(Object.values(workbook.SheetNames)[0])
+        alert('请到控制台查看')
+        console.log(arr)
+      }
+    </script>
+  </body>
+</html>

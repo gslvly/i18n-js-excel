@@ -54,6 +54,8 @@ const getXLSLdata = async (file, sheetName) => {
 
   return Object.values(workbook.SheetNames).map(toJSON)
 }
+
+
 /**
  *
  * @param {a:1,b:{c:'啥子'}} tempStr
@@ -379,4 +381,39 @@ async function trans({ from = 'zh-CN', to = 'en', q }) {
 // 获取子节长度
 function getLength(val) {
   return new Blob([String(val)]).size
+}
+
+
+ const selectFile = ({
+  size = [0, Infinity],
+  multiple = false,
+  accept = ''
+})=> {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = accept
+  input.multiple = multiple
+
+  return new Promise((r, rej) => {
+    input.onchange = () => {
+      for (const it of input.files || []) {
+        if (it.size > size[1]) {
+          rej('文件大小最大不超过' + formatSize(size[1]))
+          return
+        }
+        if (it.size < size[0]) {
+          rej('文件大小不小于' + formatSize(size[0]))
+          return
+        }
+        const nameSplit = it.name.split('.')
+        if (accept && it.type !== accept && '.' + nameSplit[nameSplit.length - 1] !== accept) {
+          rej('文件类型错误:' + it.name)
+          return
+        }
+      }
+      r(input.files)
+    }
+    input.oncancel = () => r(null)
+    input.click()
+  })
 }

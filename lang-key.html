@@ -16,15 +16,34 @@
       .title {
         display: flex;
       }
+      pre {
+        background-color: #fff;
+        padding: 12px;
+      }
+      .col {
+        padding: 20px;
+      }
+      .col:not(:first-child) {
+        border-left: 1px solid blueviolet;
+      }
+      pre {
+        word-break: break-all;
+        white-space: pre-wrap;
+      }
+      .result {
+        display: grid;
+        margin-top: 12px;
+        grid-template-columns: 33% 33% 33%;
+      }
     </style>
     <div style="background-color: rgb(240, 233, 223)">
-      <h2>翻译好的json(例如en.json {"中文":"chinese"}) 导出excel</h2>
-      <div class="title">
-        key语言：
-        <input type="text" class="keylang" />
-      </div>
+      <h2>
+        翻译好的json(例如en.json {"中文":"chinese"})
+        导出excel。key必须为中文（zh_CN）
+      </h2>
       <hr />
       <button onclick="add()" style="margin-bottom: 12px">添加语言</button>
+       <button onclick="conf()">导出excel</button>
       <div class="content">
         <div class="item">
           <div class="label">
@@ -37,18 +56,31 @@
           </div>
         </div>
       </div>
-      <hr />
-      <button onclick="conf()">导出excel</button>
+     
       <hr />
     </div>
-    <div style="background-color: rgb(228, 219, 236)">
+    <div style="background-color: rgb(228, 219, 236); padding-bottom: 50px">
       <h2>excel 生成json，每一列的第一行为语言</h2>
       <button onclick="selectFiles()">选择文件</button>
+      <br />
 
-      <div class="show">
+      <textarea
+        class="temp"
+        rows="20"
+        cols="100"
+        oninput="update()"
+        placeholder="请输入原始json文件，有数据时将删掉key的空格再对比是不是翻译的同一个字段，并且不会新增多的字段"
+      ></textarea>
 
-      </div>
-    </div> 
+      <div style="margin-top: 24px">结果:</div>
+      <div class="result"></div>
+      <template id="template">
+        <div class="col">
+          <button>复制结果</button><span style="margin-left: 8px"></span>
+          <pre></pre>
+        </div>
+      </template>
+    </div>
 
     <script>
       function add() {
@@ -58,15 +90,24 @@
       }
 
       function toObj(str) {
-        return new Function(`return ${str}`)();
+        try {
+          return new Function(`return ${str}`)();
+        } catch (err) {
+          return null;
+        }
       }
       function conf() {
         const items = document.querySelectorAll(".item");
-        const keyLang = document.querySelector(".keylang").value;
+        const keyLang = "zh_CN";
+
+        const inputValue = it.querySelector("input").value
+        const objStr = it.querySelector("textarea").value
+        if(!inputValue || !objStr) return
+        
         const info = [...items].map((it) => {
           return {
-            lang: it.querySelector("input").value,
-            obj: toObj(it.querySelector("textarea").value),
+            lang: inputValue,
+            obj: toObj(objStr),
           };
         });
         console.log(info);
@@ -86,11 +127,12 @@
         downloadExcel(arr);
       }
 
+      let arr = [];
+
       async function selectFiles() {
         const files = await selectFile({
           accept: ".xlsx",
         });
-
         const file = files[0];
         let buffer = await reader.readAsArrayBuffer(file);
         buffer = new Uint8Array(buffer);
@@ -99,9 +141,70 @@
         const toJSON = (sheetName) =>
           XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-        const arr =   toJSON(Object.values(workbook.SheetNames)[0])
-        alert('请到控制台查看')
-        console.log(arr)
+        arr = toJSON(Object.values(workbook.SheetNames)[0]);
+
+        update();
+      }
+
+      function update() {
+        document.querySelector(".result").innerHTML = "";
+        if (!arr.length) return;
+        const allKey = new Set(arr.map((it) => Object.keys(it)).flat());
+
+        const append = (str, title) => {
+          const col = document
+            .querySelector("#template")
+            .content.cloneNode(true)
+            .querySelector(".col");
+
+          col.querySelector("pre").innerHTML = str;
+          col.querySelector("span").innerHTML = title;
+          document.querySelector(".result").appendChild(col);
+          col.querySelector("button").onclick = () => {
+            navigator.clipboard.writeText(str);
+          };
+        };
+
+        const res = [];
+
+        const normalizeStr = (v) => v.replace(/[\n\r\s]/g, "");
+        allKey.forEach((key) => {
+          if (key === "zh_CN") return;
+          const obj = {};
+          const obj2 = {};
+          arr.forEach((it) => {
+            obj[it.zh_CN] = it[key] || "";
+            obj2[normalizeStr(it.zh_CN)] = it[key] || "";
+          });
+          res.push({ lang: key, data: obj, normalizeKeyObj: obj2 });
+        });
+
+        const temp = toObj(document.querySelector(".temp").value);
+
+        if (!temp) {
+          res.forEach((it) => {
+            append(JSON.stringify(it.data, null, 4), it.lang);
+          });
+          return;
+        }
+
+        res.forEach((v) => {
+          if (v.key === "zh_CN") return;
+          const obj = {};
+          Object.keys(temp).forEach((k) => {
+            const normalizeKey = normalizeStr(k);
+            obj[k] = v.normalizeKeyObj[normalizeKey] || temp[k];
+          });
+          append(JSON.stringify(obj, null, 4), v.lang);
+        });
+
+        console.log({ arr, obj: res });
+      }
+
+      function copyResult() {
+        navigator.clipboard.writeText(
+          document.querySelector(".result").innerHTML
+        );
       }
     </script>
   </body>
